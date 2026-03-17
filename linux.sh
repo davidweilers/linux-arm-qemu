@@ -24,41 +24,35 @@ export CROSS_COMPILE=arm-linux-gnueabi-
 # export ARCH=arm64
 # export CROSS_COMPILE=aarch64-linux-gnu-
 
-cd ${DIR}/busybox
-# make clean
-# cd ${DIR}/linux
-# make clean
+if ! [ -d "${DIR}/busybox" ]; then
+	git clone --depth=1 https://github.com/mirror/busybox.git busybox
+	cd ${DIR}/busybox
+	cp ${DIR}/busybox.config .config
+	make -j$(nproc)
 
-# make defconfig
-# # make clean
-# sed -e 's/.*FEATURE_PREFER_APPLETS.*/CONFIG_FEATURE_PREFER_APPLETS=y/' -i .config
-# sed -e 's/.*FEATURE_SH_STANDALONE.*/CONFIG_FEATURE_SH_STANDALONE=y/' -i .config
-# sed -e 's/.*CONFIG_SHA1_HWACCEL.*/CONFIG_SHA1_HWACCEL=n/' -i .config
-# sed -e 's/.*CONFIG_STATIC.*/CONFIG_STATIC=y/' -i .config
-# sed -e 's/.*CONFIG_TC.*/CONFIG_TC=n/' -i .config
-# sed -i 's/.*CONFIG_STATIC_LIBGCC=.*/CONFIG_STATIC_LIBGCC=y/' -i .config
-# make menuconfig
-# ARCH=${ARCH} CROSS_COMPILE=${CROSS}- make menuconfig		
-# make -j$(nproc)
-mkdir -p ${DIR}/rootfs/bin
-cp busybox ${DIR}/rootfs/bin/busybox
-# ln -s busybox ${DIR}/rootfs/bin/sh
-# ln -s busybox ${DIR}/rootfs/bin/ls
-# ln -s busybox ${DIR}/rootfs/bin/mkdir
-# cd ${DIR}/rootfs
-# make -t ${DIR}/rootfs install
-# exit
+	# mkdir -p ${DIR}/rootfs/bin
+	# cp busybox ${DIR}/rootfs/bin/busybox
+	# ln -s busybox ${DIR}/rootfs/bin/sh
+	# ln -s busybox ${DIR}/rootfs/bin/ls
+	# ln -s busybox ${DIR}/rootfs/bin/mkdir
+	# cd ${DIR}/rootfs
+	# make -t ${DIR}/rootfs install
+	# exit
+fi
 
-cd ${DIR}/linux
-# make versatile_defconfig
-# # make distclean
-# make clean
-make tinyconfig
-# # make menuconfig
-make -j$(nproc)
+if ! [ -d "${DIR}/linux" ]; then
+	git clone --depth=1 https://github.com/torvalds/linux.git linux
+	cd ${DIR}/linux
+	cp ${DIR}/linux.config .config
+	# make versatile_defconfig
+	# # make distclean
+	# make clean
+	# make tinyconfig
+	# # make menuconfig
+	make -j$(nproc)
+fi
 
-# exit
-
+mkdir -p ${DIR}/rootfs/{bin}
 cd ${DIR}/rootfs
 find . | cpio -o -H newc | gzip > ../initrd.gz
 
