@@ -21,11 +21,16 @@ export ARCH=arm
 export CROSS_COMPILE=arm-linux-gnueabi-
 
 # qemu-system-arm
+# exit
 # export ARCH=arm64
 # export CROSS_COMPILE=aarch64-linux-gnu-
 
+cd ${DIR}
 if ! [ -d "${DIR}/busybox" ]; then
 	git clone --depth=1 https://github.com/mirror/busybox.git busybox
+fi
+
+if ! [ -f "${DIR}/busybox/.config" ]; then
 	cd ${DIR}/busybox
 	cp ${DIR}/busybox.config .config
 	make -j$(nproc)
@@ -40,8 +45,13 @@ if ! [ -d "${DIR}/busybox" ]; then
 	# exit
 fi
 
+cd ${DIR}
 if ! [ -d "${DIR}/linux" ]; then
 	git clone --depth=1 https://github.com/torvalds/linux.git linux
+fi
+
+cd ${DIR}/linux
+if ! [ -f "${DIR}/linux/.config" ]; then
 	cd ${DIR}/linux
 	cp ${DIR}/linux.config .config
 	# make versatile_defconfig
