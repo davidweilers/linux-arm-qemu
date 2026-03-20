@@ -60,23 +60,46 @@ if ! [ -f "${DIR}/linux/.config" ]; then
 	# make tinyconfig
 	# # make menuconfig
 	make -j$(nproc)
+	make -j$(nproc) dtbs
 fi
 
-mkdir -p ${DIR}/rootfs/{bin}
+# ---
+
+rm -rf ${DIR}/rootfs
+mkdir -p ${DIR}/rootfs/{bin,sbin,etc,usr,lib,dev,proc,sys}
+ln -s busybox ${DIR}/rootfs/bin/sh
+cp ${DIR}/busybox/busybox ${DIR}/rootfs/bin/
+cat > ${DIR}/rootfs/init << 'EOF'
+#!/bin/bash
+mount -t proc none /proc
+mount -t sysfs none /sys
+mount -t devtmpfs none /dev
+while true; do
+exec /bin/bash
+done
+EOF
+chmod +x ${DIR}/rootfs/init
+
 cd ${DIR}/rootfs
 find . | cpio -o -H newc | gzip > ../initrd.gz
-
 cd ${DIR}
+zcat initrd.gz | cpio -ivt
+# exit
 
 qemu=(
-	-machine versatilepb # raspi3b
+	-machine virt,highmem=off #versatilepb # raspi3b
+	# -cpu max
 	# -cpu arm1176
-	# -cpu cortex-a57
+	-cpu cortex-a15
 	-kernel linux/arch/arm/boot/zImage
-	-dtb linux/arch/arm/boot/dts/arm/versatile-pb.dtb
+	# -dtb linux/arch/arm/boot/dts/arm/vexpress-v2p-ca15_a7.dtb
 	# -kernel linux/arch/x86/boot/bzImage
 	-initrd initrd.gz
-	-append "root=/dev/ram boot=/init init=/init earlyprintk=serial,ttyAMA0 console=ttyAMA0"
+	-append "root=/dev/vda console=ttyAMA0"
+	-device virtio-gpu-pci
+	# -device ramfb
+	-display default,show-cursor=on
+	# -append "root=/dev/ram boot=/init init=/init earlyprintk=serial,ttyAMA0 console=ttyAMA0"
 	# -vga std
 	# -append "console=ttyS0"
 	# -append "console=ttyAMA0"
@@ -87,7 +110,7 @@ qemu=(
 	# -monitor stdio
 	# -serial mon:stdio
 	-no-reboot
-	-nographic
+	# -nographic
 )
 
 qemu-system-arm "${qemu[@]}"
