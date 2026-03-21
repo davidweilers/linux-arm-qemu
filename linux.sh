@@ -57,37 +57,39 @@ if ! [ -f "${DIR}/linux/.config" ]; then
 	# make versatile_defconfig
 	# # make distclean
 	# make clean
-	# make tinyconfig
-	# # make menuconfig
+	make tinyconfig
+	make menuconfig
 	make -j$(nproc)
-	make -j$(nproc) dtbs
+	# make -j$(nproc) dtbs
 fi
 
 # ---
 
+cd ${DIR}
 rm -rf ${DIR}/rootfs
 mkdir -p ${DIR}/rootfs/{bin,sbin,etc,usr,lib,dev,proc,sys}
 ln -s busybox ${DIR}/rootfs/bin/sh
 cp ${DIR}/busybox/busybox ${DIR}/rootfs/bin/
-cat > ${DIR}/rootfs/init << 'EOF'
-#!/bin/bash
-mount -t proc none /proc
-mount -t sysfs none /sys
-mount -t devtmpfs none /dev
-while true; do
-exec /bin/bash
-done
-EOF
+# cat > ${DIR}/rootfs/init << 'EOF'
+# #!/bin/bash
+# mount -t proc none /proc
+# mount -t sysfs none /sys
+# mount -t devtmpfs none /dev
+# while true; do
+# exec /bin/bash
+# done
+# EOF
+# chmod +x ${DIR}/rootfs/init
+cp main_static_arm32 ${DIR}/rootfs/init
 chmod +x ${DIR}/rootfs/init
-
 cd ${DIR}/rootfs
-find . | cpio -o -H newc | gzip > ../initrd.gz
+find . | cpio -R 0:0 -o -H newc | gzip > ../initrd.gz
 cd ${DIR}
 zcat initrd.gz | cpio -ivt
 # exit
 
 qemu=(
-	-machine virt,highmem=off #versatilepb # raspi3b
+	-machine virt # ,highmem=off #versatilepb # raspi3b
 	# -cpu max
 	# -cpu arm1176
 	-cpu cortex-a15
@@ -95,15 +97,18 @@ qemu=(
 	# -dtb linux/arch/arm/boot/dts/arm/vexpress-v2p-ca15_a7.dtb
 	# -kernel linux/arch/x86/boot/bzImage
 	-initrd initrd.gz
-	-append "root=/dev/vda console=ttyAMA0"
-	-device virtio-gpu-pci
-	# -device ramfb
+	# -append "root=/dev/vda console=ttyAMA0"
+	# -device virtio-gpu-device
+	# -append "fbcon=map:0"
+	# -device virtio-gpu-pci
+	# -device virtio-blk-device,drive=hd0
+	-append "root=/dev/ram init=/init earlyprintk=serial,ttyAMA0 console=ttyAMA0"
+	-device ramfb
 	-display default,show-cursor=on
-	# -append "root=/dev/ram boot=/init init=/init earlyprintk=serial,ttyAMA0 console=ttyAMA0"
 	# -vga std
 	# -append "console=ttyS0"
 	# -append "console=ttyAMA0"
-	# -m 256M
+	-m 256M
 	# -serial stdio
 	# -monitor stdio
 	# -parallel none
@@ -114,4 +119,3 @@ qemu=(
 )
 
 qemu-system-arm "${qemu[@]}"
-
